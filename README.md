@@ -22,7 +22,7 @@ Options:
 ```
 Running
 ```
-python itc.py -l '..\data\*-D44D96D70B751BA0.itc'
+python2 itc.py -l '..\data\*-D44D96D70B751BA0.itc'
 ```
 produces
 ```
