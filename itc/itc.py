@@ -14,10 +14,12 @@
 
 # Contributors:
 #     Simon Kennedy <code@sffjunkie.co.uk>
+#     Martin fong (version 0.3.4)
 
-__version__ = '0.3.3'
-__author__ = 'Simon Kennedy <code@sffjunkie.co.uk>'
+__version__ = '0.3.4'
+__author__ = 'Martin Fong'
 
+ITUNES_10 = 196
 ITUNES_9 = 208
 ITUNES_OLD = 216
 
@@ -89,6 +91,15 @@ class EasyPNG(object):
     
 
 class ITCFile(object):
+
+    # 16 byte preamble for ITUNES_9 and ITUNES_10 & 20 after ITUNES_OLD. 
+    # The reason for this unclear.
+    # ITUNES_OLD also has extra 4 bytes before image data to account for the
+    # 8 bytes difference
+    _PREFIX_OFFSET = {ITUNES_9:   16,
+                      ITUNES_10:  16,
+                      ITUNES_OLD: 20}
+
     def __init__(self, mode=ITUNES_9, quiet=False):
         self._HANDLER = {
             'itch': self._parse_itch,
@@ -274,15 +285,13 @@ class ITCFile(object):
         start = self._rs.tell()
         self.image_offset = struct.unpack('!L', self._rs.read(4))[0]
 
-        # 16 byte preamble for ITUNES_9 & 20 after ITUNES_OLD. 
-        # The reason for this unclear.
-        # ITUNES_OLD also has extra 4 bytes before image data to account for the
-        # 8 bytes difference
-        if self.image_offset == ITUNES_9:
-            self.info_preamble = self._rs.read(16)
-        elif self.image_offset == ITUNES_OLD:
-            self.info_preamble = self._rs.read(20)
-        
+        _prefix_offset = self._PREFIX_OFFSET.get(self.image_offset)
+        if _prefix_offset:
+            self.info_preamble = self._rs.read(_prefix_offset)
+        else:
+            raise ITCException('Unrecognized iTunes version: %d.'
+                  % self.image_offset)
+
         library, track, imethod, iformat = struct.unpack('!QQ0004s0004s',
                                                          self._rs.read(24))
         
@@ -308,17 +317,21 @@ class ITCFile(object):
             method = 'local'
         elif imethod == 'down':
             method = 'download'
+        elif imethod == 'genr':
+            method = 'generated'
             
         # TODO: Confirm that downloaded and local images use the same
         # format identifiers
         format_ = ''
-        if iformat == 'PNGf' or iformat == '\x00\x00\x00\x0e':
+        if iformat == 'PNGf' or iformat == '\x00\x00\x00\x0e' or iformat == '\x00\x00\x23\x28':
             format_ = 'PNG'
         elif iformat == '\x00\x00\x00\x0d':
             format_ = 'JPEG'
         elif iformat == 'ARGb':
             format_ = 'ARGB'
-        
+        else:
+            print ('Unknown format: %s' % iformat)
+
         self._rs.seek(4, os.SEEK_CUR)
         width, height = struct.unpack('!LL', self._rs.read(8))
 
@@ -335,6 +348,16 @@ class ITCFile(object):
         
         self.images.append((width, height, data, format_, method, data_size))
 
+    def _outputFilename (self, filename, img):
+        extension = ''
+        if img[3] == 'PNG' or img[3] == 'ARGB':
+            extension = '.png'
+        elif img[3] == 'JPEG':
+            extension = '.jpg'
+        else:
+            print ('*** MISSING EXTENSION: %s (%s) ***' % (filename, img[3]))
+        return '%s-%dx%d%s' % (filename, img[0], img[1], extension)
+
     def _export_image_data(self, filename, num):
         if num < 0:
             pass
@@ -344,14 +367,8 @@ class ITCFile(object):
         if not self.quiet:
             print(('    %02d, width=%d, height=%d, format=%s, location=%s, '
                 'length=%d') % (num+1, img[0], img[1], img[3], img[4], img[5]))
-        
-        extension = ''
-        if img[3] == 'PNG' or img[3] == 'ARGB':
-            extension = '.png'
-        elif img[3] == 'JPEG':
-            extension = '.jpg'
 
-        fp = open('%s%s' % (filename, extension), 'wb')
+        fp = open(self._outputFilename(filename, img), 'wb')
         
         if img[3] != 'ARGB':
             fp.write(img[2])
@@ -379,7 +396,7 @@ if __name__ == "__main__":
     parser = OptionParser(usage='python %s [options] filespec' % sys.argv[0])
     parser.add_option('-l', '--list', dest='list', action='store_true', default=False, help='list image information and exit.')
     parser.add_option('-n', '--number', dest='number', default=-1, help='only output image number NUMBER.', metavar='NUMBER')
-    parser.add_option('-b', '--basename', dest='basename', default='', help='base name for output files appended with the image number and extension.')
+    parser.add_option('-b', '--basename', dest='basename', default='', help='base name for output files appended with the image number, size, and extension.')
     parser.add_option('-d', '--directory', dest='directory', default='', help='base directory for output files.')
     parser.add_option('-a', '--add', dest='add', default='', help='add an image. IMGSPEC=filename:width:height', metavar='IMGSPEC')
     parser.add_option('-s', '--set', dest='set', default='', help='set the library and track IDs. LIBSPEC=library:track', metavar='LIBSPEC')
@@ -422,7 +439,7 @@ if __name__ == "__main__":
                             itc.write()
                         except ValueError:
                             print('Invalid width or height. Values must be integers')
-                        except Exception, exc:
+                        except Exception as exc:
                             print('Unable to add image %s to ITC file %s' % (img, filename))
                             print(exc.args[-1])
                         
@@ -444,6 +461,5 @@ if __name__ == "__main__":
                     else:
                         try:
                             itc.export_image(name, num=int(options.number))
-                        except Exception, exc:
+                        except Exception as exc:
                             print('Error: %s' % exc.args[0])
-                            

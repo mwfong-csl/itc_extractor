@@ -16,13 +16,12 @@ from os.path import join
 from distutils.core import setup
 
 setup(name='itc',
-    version='0.3.3',
-    description='Extracts images from an iTunes .itc file.',
-    long_description="""A small script which extracts PNG, JPEG and ARGB
-    cover art from an iTunes `.itc` file.""",
-    author='Simon Kennedy',
-    author_email='code@sffjunkie.co.uk',
-    url="http://www.sffjunkie.co.uk/python-itc.html",
+    version='0.3.4',
+    description='Extracts images from iTunes .itc files.',
+    long_description="""Python2 script that extracts PNG, JPEG, and ARGB
+    cover art from iTunes `.itc` files.""",
+    author='Martin Fong',
+    url="https://github.com/mwfong-csl/itc_extractor",
     license='Apache-2.0',
     scripts=[join('itc', 'itc.py')],
 )

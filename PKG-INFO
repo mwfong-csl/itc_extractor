@@ -1,11 +1,12 @@
 Metadata-Version: 1.0
 Name: itc
-Version: 0.3.3
+Version: 0.3.4
 Summary: Extracts images from an iTunes .itc file.
-Home-page: http://www.sffjunkie.co.uk/python-itc.html
-Author: Simon Kennedy
-Author-email: code@sffjunkie.co.uk
+Home-page: https://github.com/mwfong-csl/itc_extractor
+Author: Martin Fong
+Original-Author: Simon Kennedy
+Original-Author-email: code@sffjunkie.co.uk
 License: Apache-2.0
-Description: A small script which extracts PNG, JPEG and ARGB
-            cover art from an iTunes `.itc` file.
+Description: A Python2 script that extracts PNG, JPEG, and ARGB
+            cover art from iTunes `.itc` files.
 Platform: UNKNOWN
